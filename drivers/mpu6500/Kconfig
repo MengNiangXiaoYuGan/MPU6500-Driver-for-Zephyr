@@ -1,0 +1,116 @@
+# MPU6500 Six-Axis Motion Tracking device configuration options
+
+# Copyright (c) 2016 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig MPU6500
+	bool "MPU6500 Six-Axis Motion Tracking Device"
+	default y
+	depends on DT_HAS_INVENSENSE_MPU6500_I2C_ENABLED
+	select I2C
+	help
+	  Enable driver for MPU6500 I2C-based six-axis motion tracking device.
+
+if MPU6500
+
+config MPU6500_TRIGGER
+	bool "MPU6500 use int pin to trigger"
+	default n
+	depends on GPIO
+	help
+	  Enable driver for int pin support
+
+choice
+	prompt "Trigger mode"
+	default MPU6500_TRIGGER_GLOBAL_THREAD
+	help
+	  Specify the type of triggering to be used by the driver.
+
+config MPU6500_TRIGGER_NONE
+	bool "No trigger"
+
+config MPU6500_TRIGGER_GLOBAL_THREAD
+	bool "Use global thread"
+	depends on GPIO
+	depends on $(dt_compat_any_has_prop,$(DT_COMPAT_INVENSENSE_MPU6500_I2C),int-gpios)
+	select MPU6500_TRIGGER
+
+config MPU6500_TRIGGER_OWN_THREAD
+	bool "Use own thread"
+	depends on GPIO
+	depends on $(dt_compat_any_has_prop,$(DT_COMPAT_INVENSENSE_MPU6500_I2C),int-gpios)
+	select MPU6500_TRIGGER
+
+endchoice
+
+config MPU6500_THREAD_PRIORITY
+	int "Thread priority"
+	depends on MPU6500_TRIGGER_OWN_THREAD
+	default 10
+	help
+	  Priority of thread used by the driver to handle interrupts.
+
+config MPU6500_THREAD_STACK_SIZE
+	int "Thread stack size"
+	depends on MPU6500_TRIGGER_OWN_THREAD
+	default 1024
+	help
+	  Stack size of thread used by the driver to handle interrupts.
+
+choice "MPU6500_WAKE_UP_FREQUENCY"
+	prompt "Frequency for mpu6500 motion wake up cycle"
+	default MPU6500_WAKE_UP_FREQUENCY_62_50
+	depends on LOG
+
+config MPU6500_WAKE_UP_FREQUENCY_0_24
+	bool "0.24hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_0_49
+	bool "0.49hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_0_98
+	bool "0.98hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_1_95
+	bool "1.95hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_3_91
+	bool "3.91hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_7_81
+	bool "7.81hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_15_63
+	bool "15.63hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_31_25
+	bool "31.25hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_62_50
+	bool "62.5hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_125
+	bool "125hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_250
+	bool "250hz"
+
+config MPU6500_WAKE_UP_FREQUENCY_500
+	bool "500hz"
+endchoice
+
+config MPU6500_WAKE_UP_FREQUENCY_VALUE
+	int
+	default 0 	if MPU6500_WAKE_UP_FREQUENCY_0_24
+	default 1 	if MPU6500_WAKE_UP_FREQUENCY_0_49
+	default 2 	if MPU6500_WAKE_UP_FREQUENCY_0_98
+	default 3 	if MPU6500_WAKE_UP_FREQUENCY_1_95
+	default 4 	if MPU6500_WAKE_UP_FREQUENCY_3_91
+	default 5 	if MPU6500_WAKE_UP_FREQUENCY_7_81
+	default 6 	if MPU6500_WAKE_UP_FREQUENCY_15_63
+	default 7 	if MPU6500_WAKE_UP_FREQUENCY_31_25
+	default 8 	if MPU6500_WAKE_UP_FREQUENCY_62_50
+	default 9 	if MPU6500_WAKE_UP_FREQUENCY_125
+	default 10 	if MPU6500_WAKE_UP_FREQUENCY_250
+	default 11 	if MPU6500_WAKE_UP_FREQUENCY_500
+endif # MPU6500

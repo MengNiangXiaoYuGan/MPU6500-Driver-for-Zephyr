@@ -1,0 +1,1 @@
+add_subdirectory_ifdef(CONFIG_DT_HAS_INVENSENSE_MPU6500_I2C_ENABLED mpu6500)
