@@ -57,11 +57,14 @@ int mpu6500_trigger_set(const struct device *dev,
 			// 	LOG_ERR("Failed to setup accel_fehoice_b");
 			// 	return -EIO;
 			// }
+
 			if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_ACCEL_CFG2,
 						  1) < 0) {
 				LOG_ERR("Failed to setup accel dlpf cfg");
 				return -EIO;
 			}
+			/*only this two can init motion interrupt*/
+
 			/*enable motion interrupt*/
 			if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_INT_EN,
 						  MPU6500_WOM_EN) < 0) {
@@ -69,22 +72,13 @@ int mpu6500_trigger_set(const struct device *dev,
 				return -EIO;
 			}
 			/*enable accel hardware intelligence*/
-			// if (i2c_reg_update_byte_dt(&cfg->i2c, MPU6500_REG_MOT_DETECT_CTRL,
-			// 			  MPU6500_ACCEL_INTER_EN,1) < 0) {
-			// 	LOG_ERR("Failed to setup mot detect ctrl to inter en");
-			// 	return -EIO;
-			// }
-			// if (i2c_reg_update_byte_dt(&cfg->i2c, MPU6500_REG_MOT_DETECT_CTRL,
-			// 			  MPU6500_ACCEL_INTER_MODE,1) < 0) {
-			// 	LOG_ERR("Failed to setup mot detect ctrl to inter mode");
-			// 	return -EIO;
-			// }
 			if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_MOT_DETECT_CTRL,
 						MPU6500_ACCEL_INTER_EN | MPU6500_ACCEL_INTER_MODE) < 0)
 			{
 				LOG_ERR("Failed to setup mnotion detect ctrl.");
 				return -EIO;
 			}
+			/*use for set low power cycle to wake up*/
 			/*set frequency of wake up*/
 			if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_LP_ACCEL_ODR,
 						  (MPU6500_LPOSC_CLKSEL)&CONFIG_MPU6500_WAKE_UP_FREQUENCY_VALUE) < 0) {
@@ -109,14 +103,48 @@ int mpu6500_trigger_set(const struct device *dev,
 			LOG_DBG("set triger mode FIFO overflow");
 			break;
 		default:
-			return -ENOTSUP;
+			/*disable all intrrupt*/
+			if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_ACCEL_CFG2,
+						  0) < 0) {
+				LOG_ERR("Failed to setup accel dlpf cfg");
+				return -EIO;
+			}
+			if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_INT_EN,
+						  0) < 0) {
+				LOG_ERR("Failed to disable motion throd interrupt.");
+				return -EIO;
+			}
+			if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_MOT_DETECT_CTRL,
+						0) < 0)
+			{
+				LOG_ERR("Failed to setup mnotion detect ctrl.");
+				return -EIO;
+			}
+			if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_LP_ACCEL_ODR,
+						  0) < 0) {
+				LOG_ERR("Failed to setup mot detect ctrl to inter mode");
+				return -EIO;
+			}
+			if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_PWR_MGMT1,
+						  0) < 0) {
+				LOG_ERR("Failed to setup power manager");
+				return -EIO;
+			}
+			if (gpio_pin_interrupt_configure_dt(&cfg->int_gpio, 
+					GPIO_INT_DISABLE))
+			{
+				LOG_ERR("Failed to disable gpio interrupt");
+				return -EIO;
+			}
+			LOG_DBG("disbale all triger");
+			return 0;
 			break;
 	}
 
-	uint8_t status = 0;
-	i2c_reg_read_byte_dt(&cfg->i2c, MPU6500_REG_MOT_DETECT_CTRL, &status);
-	LOG_DBG("DBG : read detect c = %d",status);
-	k_msleep(100);
+	// uint8_t status = 0;
+	// i2c_reg_read_byte_dt(&cfg->i2c, MPU6500_REG_MOT_DETECT_CTRL, &status);
+	// LOG_DBG("DBG : read detect c = %d",status);
+	// k_msleep(100);
 
 	gpio_pin_interrupt_configure_dt(&cfg->int_gpio, 
 					GPIO_INT_DISABLE);
@@ -248,6 +276,57 @@ static void mpu6500_thread_cb(const struct device *dev)
 		drv_data->callback_handler(dev,
 					     drv_data->callback_trigger);
 	}
+	// /*switch triger to disable triger set*/
+	// switch (drv_data->callback_trigger->type)
+	// {
+	// case SENSOR_TRIG_DATA_READY:
+	// 	if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_INT_EN,
+	// 				  0) < 0) {
+	// 		LOG_ERR("Failed to disable data ready interrupt.");
+	// 	}
+	// 	LOG_DBG("disable data ready triger");
+	// 	break;
+	// case SENSOR_TRIG_MOTION:
+	// 	if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_ACCEL_CFG2,
+	// 				  0) < 0) {
+	// 		LOG_ERR("Failed to setup accel dlpf cfg");
+	// 	}
+	// 	/*only this two can init motion interrupt*/
+
+	// 	/*enable motion interrupt*/
+	// 	if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_INT_EN,
+	// 				  0) < 0) {
+	// 		LOG_ERR("Failed to disable motion throd interrupt.");
+	// 	}
+	// 	/*enable accel hardware intelligence*/
+	// 	if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_MOT_DETECT_CTRL,
+	// 				0) < 0)
+	// 	{
+	// 		LOG_ERR("Failed to setup mnotion detect ctrl.");
+	// 	}
+	// 	/*use for set low power cycle to wake up*/
+	// 	/*set frequency of wake up*/
+	// 	if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_LP_ACCEL_ODR,
+	// 				  0) < 0) {
+	// 		LOG_ERR("Failed to setup mot detect ctrl to inter mode");
+	// 	}
+	// 	/*enable cycle mode*/
+	// 	if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_PWR_MGMT1,
+	// 				  0) < 0) {
+	// 		LOG_ERR("Failed to setup power manager");
+	// 	}
+	// 	LOG_DBG("disbale motion triger");
+	// 	break;
+	// case SENSOR_TRIG_FIFO_FULL:
+	// 	if (i2c_reg_write_byte_dt(&cfg->i2c, MPU6500_REG_INT_EN,
+	// 				  0) < 0) {
+	// 		LOG_ERR("Failed to disable FIFO overflow interrupt.");
+	// 	}
+	// 	LOG_DBG("disbale fifo overflow trigger");
+	// 	break;
+	// default:
+	// 	break;
+	// }
 
 	gpio_pin_interrupt_configure_dt(&cfg->int_gpio,
 					GPIO_INT_EDGE_TO_ACTIVE);
